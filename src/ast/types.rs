@@ -1,98 +1,81 @@
 use crate::lexer::types::{Token, BooleanOps, AdditiveOps, Keyword, MultiplicativeOps};
-use std::collections::HashMap;
 
-const INVALID_EXPR_ERROR: &str = "
-Invalid expression. Expected expression syntax:
-<expr>     ::= fn <identifier> => <expr>
-            | let rec <identifier> = <expr> in <expr>
-            | let <identifier> = <expr> in <expr>
-            | if <expr> then <expr> else <expr>
-            | <comp_expr>
-";
-const INVALID_FUNC_DECL_EXPR_ERROR: &str = "Incomplete func declaration. Syntax expected: fn <identifier> => <expr>";
-const INVALID_LET_EXPR_ERROR: &str = "Incomplete Let statement. Syntax expected: let <identifier> = <expr> in <expr>";
-const INVALID_IF_EXPR_ERROR: &str = "Incomplete if statement. Syntax expected: if <expr> then <expr> else <expr>";
+// const INVALID_EXPR_ERROR: &str = "
+// Invalid expression. Expected expression syntax:
+// <expr>     ::= fn <identifier> => <expr>
+//             | let rec <identifier> = <expr> in <expr>
+//             | let <identifier> = <expr> in <expr>
+//             | if <expr> then <expr> else <expr>
+//             | <comp_expr>
+// ";
+// const INVALID_FUNC_DECL_EXPR_ERROR: &str = "Incomplete func declaration. Syntax expected: fn <identifier> => <expr>";
+// const INVALID_LET_EXPR_ERROR: &str = "Incomplete Let statement. Syntax expected: let <identifier> = <expr> in <expr>";
+// const INVALID_IF_EXPR_ERROR: &str = "Incomplete if statement. Syntax expected: if <expr> then <expr> else <expr>";
 type ParseResult<T> = Result<(T, usize), String>;
 
 #[derive(Debug)]
 pub struct LetExpr {
-    identifier: String,
-    value: Box<Expr>,
-    body_expr: Box<Expr>,
+    pub identifier: String,
+    pub value: Box<Expr>,
+    pub body_expr: Box<Expr>,
+}
+
+fn parse_let_expr(tokens: &[Token], idx: usize) -> ParseResult<(String, Box<Expr>, Box<Expr>)> {
+    let identifier = match tokens.get(idx + 1) {
+        Some(Token::Identifier(identifier)) => identifier,
+        Some(other) => return Err(format!("Expected =, received: {:?}.", other)),
+        None => return Err("Unexpected end of input, expected =.".to_string()),
+    };
+    match tokens.get(idx + 2) {
+        Some(Token::EqualSign) => {},
+        Some(other) => return Err(format!("Expected =, received: {:?}.", other)),
+        None => return Err("Unexpected end of input, expected =.".to_string()),
+    }
+
+    let (value, next_idx) = Expr::new(tokens, idx + 3)?;
+    match tokens.get(next_idx) {
+        Some(Token::Keyword(Keyword::In)) => {},
+        Some(other) => return Err(format!("Expected in, received: {:?}.", other)),
+        None => return Err("Unexpected end of input, expected =.".to_string()),
+    }
+
+    let (body_expr, next_idx) = Expr::new(tokens, next_idx + 1)?;
+
+    Ok(
+        (
+            (identifier.clone(), Box::new(value), Box::new(body_expr)), next_idx
+        )
+    )
 }
 
 impl LetExpr {
     pub fn new(tokens: &[Token], idx: usize) -> ParseResult<Self> {
-        let identifier = match tokens.get(idx + 1) {
-            Some(Token::Identifier(identifier)) => identifier,
-            Some(other) => return Err(format!("Expected =, received: {:?}.", other)),
-            None => return Err("Unexpected end of input, expected =.".to_string()),
-        };
-        match tokens.get(idx + 2) {
-            Some(Token::EqualSign) => {},
-            Some(other) => return Err(format!("Expected =, received: {:?}.", other)),
-            None => return Err("Unexpected end of input, expected =.".to_string()),
-        }
-
-        let (value, next_idx) = Expr::new(tokens, idx + 3)?;
-        if next_idx + 1 >= tokens.len() {
-            return Err(INVALID_LET_EXPR_ERROR.to_string())
-        }
-
-        match tokens.get(next_idx) {
-            Some(Token::Keyword(Keyword::In)) => {},
-            Some(other) => return Err(format!("Expected in, received: {:?}.", other)),
-            None => return Err("Unexpected end of input, expected =.".to_string()),
-        }
-
-        let (body_expr, next_idx) = Expr::new(tokens, next_idx + 1)?;
+        let ((identifier, value, body_expr), next_idx) = parse_let_expr(tokens, idx)?;
         Ok(
             (Self {
-                identifier: identifier.clone(),
-                value: Box::new(value),
-                body_expr: Box::new(body_expr),
+                identifier,
+                value,
+                body_expr,
             }, next_idx)
         )
     }
 }
 
 #[derive(Debug)]
-pub struct LetRec {
-    identifier: String,
-    value: Box<Expr>,
-    body_expr: Box<Expr>,
+pub struct LetRecExpr {
+    pub identifier: String,
+    pub value: Box<Expr>,
+    pub body_expr: Box<Expr>,
 }
 
-impl LetRec {
+impl LetRecExpr {
     pub fn new(tokens: &[Token], idx: usize) -> ParseResult<Self> {
-        let identifier = match tokens.get(idx + 1) {
-            Some(Token::Identifier(identifier)) => identifier,
-            Some(other) => return Err(format!("Expected =, received: {:?}.", other)),
-            None => return Err("Unexpected end of input, expected =.".to_string()),
-        };
-        match tokens.get(idx + 2) {
-            Some(Token::EqualSign) => {},
-            Some(other) => return Err(format!("Expected =, received: {:?}.", other)),
-            None => return Err("Unexpected end of input, expected =.".to_string()),
-        }
-
-        let (value, next_idx) = Expr::new(tokens, idx + 3)?;
-        if next_idx + 1 >= tokens.len() {
-            return Err(INVALID_LET_EXPR_ERROR.to_string())
-        }
-
-        match tokens.get(next_idx) {
-            Some(Token::Keyword(Keyword::In)) => {},
-            Some(other) => return Err(format!("Expected in, received: {:?}.", other)),
-            None => return Err("Unexpected end of input, expected =.".to_string()),
-        }
-
-        let (body_expr, next_idx) = Expr::new(tokens, next_idx)?;
+        let ((identifier, value, body_expr), next_idx) = parse_let_expr(tokens, idx)?;
         Ok(
             (Self {
-                identifier: identifier.clone(),
-                value: Box::new(value),
-                body_expr: Box::new(body_expr),
+                identifier,
+                value,
+                body_expr,
             }, next_idx)
         )
     }
@@ -100,9 +83,9 @@ impl LetRec {
 
 #[derive(Debug)]
 pub struct IfExpr {
-    bool_expr: Box<Expr>,
-    then_expr: Box<Expr>,
-    else_expr: Box<Expr>,
+    pub bool_expr: Box<Expr>,
+    pub then_expr: Box<Expr>,
+    pub else_expr: Box<Expr>,
 }
 
 impl IfExpr {
@@ -133,8 +116,8 @@ impl IfExpr {
 
 #[derive(Debug)]
 pub struct FunctionDeclExpr {
-    param: String,
-    body_expr: Box<Expr>,
+    pub param: String,
+    pub body_expr: Box<Expr>,
 }
 
 impl FunctionDeclExpr {
@@ -162,8 +145,8 @@ impl FunctionDeclExpr {
 
 #[derive(Debug)]
 pub struct CompExpr {
-    add_expr: AddExpr,
-    chained_expr: Option<ChainedCompExpr>
+    pub add_expr: AddExpr,
+    pub chained_expr: Option<ChainedCompExpr>
 }
 
 impl CompExpr {
@@ -182,8 +165,8 @@ impl CompExpr {
 
 #[derive(Debug)]
 pub struct ChainedCompExpr {
-    add_expr: AddExpr,
-    comp_op: BooleanOps
+    pub add_expr: AddExpr,
+    pub comp_op: BooleanOps
 }
 
 impl ChainedCompExpr {
@@ -209,8 +192,8 @@ impl ChainedCompExpr {
 
 #[derive(Debug)]
 pub struct AddExpr {
-    mul_expr: Box<MulExpr>,
-    chained_expr: Option<Box<ChainedAddExpr>>
+    pub mul_expr: Box<MulExpr>,
+    pub chained_expr: Option<Box<ChainedAddExpr>>
 }
 
 impl AddExpr {
@@ -229,9 +212,9 @@ impl AddExpr {
 
 #[derive(Debug)]
 pub struct ChainedAddExpr {
-    mul_expr: MulExpr,
-    additive_ops: AdditiveOps,
-    chained_expr: Option<Box<ChainedAddExpr>>,
+    pub mul_expr: MulExpr,
+    pub additive_ops: AdditiveOps,
+    pub chained_expr: Option<Box<ChainedAddExpr>>,
 }
 
 impl ChainedAddExpr {
@@ -259,8 +242,8 @@ impl ChainedAddExpr {
 
 #[derive(Debug)]
 pub struct MulExpr {
-    app_expr: AppExpr,
-    chained_expr: Option<Box<ChainedMulExpr>>
+    pub app_expr: AppExpr,
+    pub chained_expr: Option<Box<ChainedMulExpr>>
 }
 
 impl MulExpr {
@@ -274,9 +257,9 @@ impl MulExpr {
 
 #[derive(Debug)]
 pub struct ChainedMulExpr {
-    app_expr: AppExpr,
-    multiplicative_ops: MultiplicativeOps,
-    chained_expr: Option<Box<ChainedMulExpr>>
+    pub app_expr: AppExpr,
+    pub multiplicative_ops: MultiplicativeOps,
+    pub chained_expr: Option<Box<ChainedMulExpr>>
 }
 
 impl ChainedMulExpr {
@@ -304,8 +287,8 @@ impl ChainedMulExpr {
 
 #[derive(Debug)]
 pub struct AppExpr {
-    atom: Atom,
-    chained_expr: Option<Box<ChainedAppExpr>>,
+    pub atom: Atom,
+    pub chained_expr: Option<Box<ChainedAppExpr>>,
 }
 
 impl AppExpr {
@@ -319,8 +302,8 @@ impl AppExpr {
 
 #[derive(Debug)]
 pub struct ChainedAppExpr {
-    atom: Atom,
-    chained_expr: Option<Box<ChainedAppExpr>>,
+    pub atom: Atom,
+    pub chained_expr: Option<Box<ChainedAppExpr>>,
 }
 
 impl ChainedAppExpr {
@@ -374,7 +357,7 @@ impl Atom {
 #[derive(Debug)]
 pub enum Expr {
     LetExpr(LetExpr),
-    LetRecExpr(LetRec),
+    LetRecExpr(LetRecExpr),
     IfExpr(IfExpr),
     FunctionDeclExpr(FunctionDeclExpr),
     CompExpr(CompExpr),
@@ -383,7 +366,6 @@ pub enum Expr {
 impl Expr {
     pub fn new(tokens: &[Token], idx: usize) -> Result<(Expr, usize), String> {
         let token = tokens.get(idx).expect("Failed to ");
-        println!("{:?}", token);
         match token {
             Token::Keyword(Keyword::Fn) => {
                 let (func_decl_expr, next_idx) = FunctionDeclExpr::new(tokens, idx)?;
@@ -394,7 +376,7 @@ impl Expr {
                 Ok((Expr::LetExpr(let_expr), next_idx))
             },
             Token::Keyword(Keyword::LetRec) => {
-                let (let_rec_expr, next_idx) = LetRec::new(tokens, idx)?;
+                let (let_rec_expr, next_idx) = LetRecExpr::new(tokens, idx)?;
                 Ok((Expr::LetRecExpr(let_rec_expr), next_idx))
             },
             Token::Keyword(Keyword::If) => {
