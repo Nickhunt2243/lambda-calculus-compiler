@@ -1,4 +1,6 @@
 pub mod types;
+#[cfg(test)]
+mod tests;
 
 use types::{Token, Keyword, BooleanOps};
 use crate::lexer::types::{AdditiveOps, MultiplicativeOps};
