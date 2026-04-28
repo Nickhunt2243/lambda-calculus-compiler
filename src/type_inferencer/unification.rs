@@ -1,4 +1,3 @@
-use std::cmp::PartialEq;
 use std::collections::HashMap;
 use crate::type_inferencer::types::{Type, TypeInference, TypeVariable, FuncType};
 
@@ -8,7 +7,7 @@ pub fn unification(inferred_types: &mut Vec<TypeInference>) -> Result<HashMap<Ty
     while idx < inferred_types.len() {
         let left = *inferred_types[idx].left.clone();
         let right = *inferred_types[idx].right.clone();
-        unify_inferred_types(
+            unify_inferred_types(
             &left,
             &right,
             inferred_types,
@@ -100,6 +99,6 @@ fn unify_inferred_types(
                 substitutions,
             )
         },
-        (other_left, other_right) => Err(format!("Failed to unify types: {:?} <> {:?}", left, right))
+        (other_left, other_right) => Err(format!("Failed to unify types: {:?} <> {:?}", other_left, other_right))
     }
 }

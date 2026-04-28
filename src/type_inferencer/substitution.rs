@@ -20,7 +20,7 @@ pub fn apply_substitutions(return_type: Type, substitutions: HashMap<TypeVariabl
                 Some(return_type) => {
                     apply_substitutions(return_type.clone(), substitutions.clone())
                 }
-                None => Err(format!("Failed to substitute type: {:?}, substitutions: {:?}", type_variable, substitutions))
+                None => Ok(FinalType::Polymorphic(type_variable.name.clone()))
             }
         }
     }

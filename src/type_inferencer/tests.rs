@@ -1,385 +1,6 @@
-// use super::infer_types::infer_expr_type;
-// use super::types::{Type, TypeInference, TypeVariableGenerate};
-// use crate::ast::types::*;
-// use crate::lexer::types::{Token, Keyword, AdditiveOps, MultiplicativeOps, BooleanOps};
-// use std::collections::HashMap;
-//
-// // ── helpers ───────────────────────────────────────────────────────────────────
-//
-// fn infer(expr: &Expr) -> Type {
-//     let env = HashMap::new();
-//     let mut constraints = Vec::new();
-//     let mut type_gen = TypeVariableGenerate::new();
-//     *infer_expr_type(expr, &env, &mut constraints, &mut type_gen).unwrap()
-// }
-//
-// fn infer_with_env(expr: &Expr, env: HashMap<String, Box<Type>>) -> Type {
-//     let mut constraints = Vec::new();
-//     let mut type_gen = TypeVariableGenerate::new();
-//     *infer_expr_type(expr, &env, &mut constraints, &mut type_gen).unwrap()
-// }
-//
-// fn infer_err(expr: &Expr) -> String {
-//     let env = HashMap::new();
-//     let mut constraints = Vec::new();
-//     let mut type_gen = TypeVariableGenerate::new();
-//     infer_expr_type(expr, &env, &mut constraints, &mut type_gen).unwrap_err()
-// }
-//
-// fn infer_constraints(expr: &Expr) -> Vec<TypeInference> {
-//     let env = HashMap::new();
-//     let mut constraints = Vec::new();
-//     let mut type_gen = TypeVariableGenerate::new();
-//     infer_expr_type(expr, &env, &mut constraints, &mut type_gen).unwrap();
-//     constraints
-// }
-//
-// fn parse(tokens: Vec<Token>) -> Expr {
-//     Expr::new(&tokens, 0).unwrap().0
-// }
-//
-// // ── atom types ────────────────────────────────────────────────────────────────
-//
-// #[test]
-// fn test_integer_literal_infers_int() {
-//     let expr = parse(vec![Token::IntegerLiteral(42)]);
-//     assert!(matches!(infer(&expr), Type::IntType));
-// }
-//
-// #[test]
-// fn test_boolean_literal_true_infers_bool() {
-//     let expr = parse(vec![Token::BooleanLiteral(true)]);
-//     assert!(matches!(infer(&expr), Type::BoolType));
-// }
-//
-// #[test]
-// fn test_boolean_literal_false_infers_bool() {
-//     let expr = parse(vec![Token::BooleanLiteral(false)]);
-//     assert!(matches!(infer(&expr), Type::BoolType));
-// }
-//
-// #[test]
-// fn test_identifier_resolves_from_env() {
-//     let expr = parse(vec![Token::Identifier("x".to_string())]);
-//     let mut env = HashMap::new();
-//     env.insert("x".to_string(), Box::new(Type::IntType));
-//     assert!(matches!(infer_with_env(&expr, env), Type::IntType));
-// }
-//
-// #[test]
-// fn test_identifier_not_in_env_errors() {
-//     let expr = parse(vec![Token::Identifier("x".to_string())]);
-//     let err = infer_err(&expr);
-//     assert!(err.contains("Variable reference prior to declaration"));
-// }
-//
-// // ── arithmetic constraints ────────────────────────────────────────────────────
-//
-// #[test]
-// fn test_addition_infers_int() {
-//     // 1 + 2
-//     let expr = parse(vec![
-//         Token::IntegerLiteral(1),
-//         Token::AdditiveOps(AdditiveOps::Add),
-//         Token::IntegerLiteral(2),
-//     ]);
-//     assert!(matches!(infer(&expr), Type::IntType));
-// }
-//
-// #[test]
-// fn test_addition_generates_int_constraints() {
-//     // 1 + 2 — both sides should be constrained to IntType
-//     let expr = parse(vec![
-//         Token::IntegerLiteral(1),
-//         Token::AdditiveOps(AdditiveOps::Add),
-//         Token::IntegerLiteral(2),
-//     ]);
-//     let constraints = infer_constraints(&expr);
-//     assert!(!constraints.is_empty());
-//     assert!(constraints.iter().any(|c| matches!(*c.right, Type::IntType)));
-// }
-//
-// #[test]
-// fn test_multiplication_infers_int() {
-//     let expr = parse(vec![
-//         Token::IntegerLiteral(3),
-//         Token::MultiplicativeOps(MultiplicativeOps::Mul),
-//         Token::IntegerLiteral(4),
-//     ]);
-//     assert!(matches!(infer(&expr), Type::IntType));
-// }
-//
-// #[test]
-// fn test_chained_addition_infers_int() {
-//     // 1 + 2 + 3
-//     let expr = parse(vec![
-//         Token::IntegerLiteral(1),
-//         Token::AdditiveOps(AdditiveOps::Add),
-//         Token::IntegerLiteral(2),
-//         Token::AdditiveOps(AdditiveOps::Add),
-//         Token::IntegerLiteral(3),
-//     ]);
-//     assert!(matches!(infer(&expr), Type::IntType));
-// }
-//
-// // ── comparison constraints ─────────────────────────────────────────────────────
-//
-// #[test]
-// fn test_less_than_infers_bool() {
-//     // 1 < 2
-//     let expr = parse(vec![
-//         Token::IntegerLiteral(1),
-//         Token::BooleanOps(BooleanOps::LessThan),
-//         Token::IntegerLiteral(2),
-//     ]);
-//     assert!(matches!(infer(&expr), Type::BoolType));
-// }
-//
-// #[test]
-// fn test_greater_than_infers_bool() {
-//     let expr = parse(vec![
-//         Token::IntegerLiteral(5),
-//         Token::BooleanOps(BooleanOps::GreaterThan),
-//         Token::IntegerLiteral(3),
-//     ]);
-//     assert!(matches!(infer(&expr), Type::BoolType));
-// }
-//
-// #[test]
-// fn test_equality_infers_bool() {
-//     // 1 == 1
-//     let expr = parse(vec![
-//         Token::IntegerLiteral(1),
-//         Token::BooleanOps(BooleanOps::Equality),
-//         Token::IntegerLiteral(1),
-//     ]);
-//     assert!(matches!(infer(&expr), Type::BoolType));
-// }
-//
-// #[test]
-// fn test_less_than_generates_int_constraints() {
-//     // x < y should constrain both sides to IntType
-//     let expr = parse(vec![
-//         Token::IntegerLiteral(1),
-//         Token::BooleanOps(BooleanOps::LessThan),
-//         Token::IntegerLiteral(2),
-//     ]);
-//     let constraints = infer_constraints(&expr);
-//     let int_constraints = constraints.iter().filter(|c| matches!(*c.right, Type::IntType)).count();
-//     assert_eq!(int_constraints, 2);
-// }
-//
-// // ── function declaration ──────────────────────────────────────────────────────
-//
-// #[test]
-// fn test_fn_infers_func_type() {
-//     // fn x => x
-//     let expr = parse(vec![
-//         Token::Keyword(Keyword::Fn),
-//         Token::Identifier("x".to_string()),
-//         Token::Arrow,
-//         Token::Identifier("x".to_string()),
-//     ]);
-//     assert!(matches!(infer(&expr), Type::FuncType(_)));
-// }
-//
-// #[test]
-// fn test_fn_body_int_infers_func_to_int() {
-//     // fn x => 5  — return type should be IntType
-//     let expr = parse(vec![
-//         Token::Keyword(Keyword::Fn),
-//         Token::Identifier("x".to_string()),
-//         Token::Arrow,
-//         Token::IntegerLiteral(5),
-//     ]);
-//     match infer(&expr) {
-//         Type::FuncType(func) => {
-//             assert!(matches!(*func.return_type, Type::IntType));
-//         }
-//         _ => panic!("Expected FuncType"),
-//     }
-// }
-//
-// #[test]
-// fn test_curried_fn_infers_nested_func_type() {
-//     // fn x => fn y => x  — should be FuncType(_, FuncType(_, _))
-//     let expr = parse(vec![
-//         Token::Keyword(Keyword::Fn),
-//         Token::Identifier("x".to_string()),
-//         Token::Arrow,
-//         Token::Keyword(Keyword::Fn),
-//         Token::Identifier("y".to_string()),
-//         Token::Arrow,
-//         Token::Identifier("x".to_string()),
-//     ]);
-//     match infer(&expr) {
-//         Type::FuncType(outer) => {
-//             assert!(matches!(*outer.return_type, Type::FuncType(_)));
-//         }
-//         _ => panic!("Expected nested FuncType"),
-//     }
-// }
-//
-// // ── let expression ────────────────────────────────────────────────────────────
-//
-// #[test]
-// fn test_let_infers_body_type() {
-//     // let x = 5 in x — body returns x which is IntType
-//     let expr = parse(vec![
-//         Token::Keyword(Keyword::Let),
-//         Token::Identifier("x".to_string()),
-//         Token::EqualSign,
-//         Token::IntegerLiteral(5),
-//         Token::Keyword(Keyword::In),
-//         Token::Identifier("x".to_string()),
-//     ]);
-//     assert!(matches!(infer(&expr), Type::IntType));
-// }
-//
-// #[test]
-// fn test_let_binding_available_in_body() {
-//     // let x = 5 in x + 1
-//     let expr = parse(vec![
-//         Token::Keyword(Keyword::Let),
-//         Token::Identifier("x".to_string()),
-//         Token::EqualSign,
-//         Token::IntegerLiteral(5),
-//         Token::Keyword(Keyword::In),
-//         Token::Identifier("x".to_string()),
-//         Token::AdditiveOps(AdditiveOps::Add),
-//         Token::IntegerLiteral(1),
-//     ]);
-//     assert!(matches!(infer(&expr), Type::IntType));
-// }
-//
-// #[test]
-// fn test_let_binding_not_visible_outside() {
-//     // let x = 5 in 1   then try x alone — x should not be in scope
-//     let body_expr = parse(vec![Token::Identifier("x".to_string())]);
-//     let err = infer_err(&body_expr);
-//     assert!(err.contains("Variable reference prior to declaration"));
-// }
-//
-// // ── if expression ─────────────────────────────────────────────────────────────
-//
-// #[test]
-// fn test_if_infers_branch_type() {
-//     // if true then 1 else 0
-//     let expr = parse(vec![
-//         Token::Keyword(Keyword::If),
-//         Token::BooleanLiteral(true),
-//         Token::Keyword(Keyword::Then),
-//         Token::IntegerLiteral(1),
-//         Token::Keyword(Keyword::Else),
-//         Token::IntegerLiteral(0),
-//     ]);
-//     assert!(matches!(infer(&expr), Type::IntType));
-// }
-//
-// #[test]
-// fn test_if_generates_bool_constraint_on_condition() {
-//     // if true then 1 else 0 — condition should be constrained to BoolType
-//     let expr = parse(vec![
-//         Token::Keyword(Keyword::If),
-//         Token::BooleanLiteral(true),
-//         Token::Keyword(Keyword::Then),
-//         Token::IntegerLiteral(1),
-//         Token::Keyword(Keyword::Else),
-//         Token::IntegerLiteral(0),
-//     ]);
-//     let constraints = infer_constraints(&expr);
-//     assert!(constraints.iter().any(|c| matches!(*c.right, Type::BoolType)));
-// }
-//
-// #[test]
-// fn test_if_generates_branch_equality_constraint() {
-//     // if true then 1 else 0 — then and else should be constrained equal
-//     let expr = parse(vec![
-//         Token::Keyword(Keyword::If),
-//         Token::BooleanLiteral(true),
-//         Token::Keyword(Keyword::Then),
-//         Token::IntegerLiteral(1),
-//         Token::Keyword(Keyword::Else),
-//         Token::IntegerLiteral(0),
-//     ]);
-//     let constraints = infer_constraints(&expr);
-//     // should have at least 2 constraints: cond==bool, then==else
-//     assert!(constraints.len() >= 2);
-// }
-//
-// // ── letrec ────────────────────────────────────────────────────────────────────
-//
-// #[test]
-// fn test_letrec_generates_recursive_constraint() {
-//     // letrec f = fn x => x in f 5
-//     let expr = parse(vec![
-//         Token::Keyword(Keyword::LetRec),
-//         Token::Identifier("f".to_string()),
-//         Token::EqualSign,
-//         Token::Keyword(Keyword::Fn),
-//         Token::Identifier("x".to_string()),
-//         Token::Arrow,
-//         Token::Identifier("x".to_string()),
-//         Token::Keyword(Keyword::In),
-//         Token::Identifier("f".to_string()),
-//         Token::IntegerLiteral(5),
-//     ]);
-//     // letrec should produce a constraint tying f's type var to its value type
-//     let constraints = infer_constraints(&expr);
-//     assert!(!constraints.is_empty());
-// }
-//
-// // ── type variable generator ───────────────────────────────────────────────────
-//
-// #[test]
-// fn test_type_var_generator_produces_unique_names() {
-//     use super::types::TypeVariableGenerate;
-//     let mut type_gen = TypeVariableGenerate::new();
-//     let a = type_gen.next();
-//     let b = type_gen.next();
-//     let c = type_gen.next();
-//     assert_ne!(a.name, b.name);
-//     assert_ne!(b.name, c.name);
-//     assert_ne!(a.name, c.name);
-// }
-//
-// #[test]
-// fn test_type_var_generator_starts_with_a() {
-//     use super::types::TypeVariableGenerate;
-//     let mut type_gen = TypeVariableGenerate::new();
-//     let first = type_gen.next();
-//     assert_eq!(first.name, "'a");
-// }
-//
-// #[test]
-// fn test_type_var_generator_second_is_b() {
-//     use super::types::TypeVariableGenerate;
-//     let mut type_gen = TypeVariableGenerate::new();
-//     type_gen.next();
-//     let second = type_gen.next();
-//     assert_eq!(second.name, "'b");
-// }
-//
-// // ── occurs check ─────────────────────────────────────────────────────────────
-//
-// #[test]
-// fn test_primitive_not_callable_errors() {
-//     // 5 x — applying an integer as a function
-//     let expr = parse(vec![
-//         Token::IntegerLiteral(5),
-//         Token::Identifier("x".to_string()),
-//     ]);
-//     let mut env = HashMap::new();
-//     env.insert("x".to_string(), Box::new(Type::IntType));
-//     let mut constraints = Vec::new();
-//     let mut type_gen = TypeVariableGenerate::new();
-//     let result = infer_expr_type(&expr, &env, &mut constraints, &mut type_gen);
-//     assert!(result.is_err());
-//     assert!(result.unwrap_err().contains("not callable"));
-// }
 
 use super::type_inference;
-use super::types::{FinalType, FinalFuncType};
+use super::types::{FinalType};
 use crate::lexer::Lexer;
 use crate::ast::parse;
 
@@ -604,6 +225,24 @@ fn test_fn_param_constrained_to_int_by_comparison() {
     }
 }
 
+#[test]
+fn test_identity_function_has_polymorphic_param() {
+    let t = run("fn x => x");
+    match t {
+        FinalType::FuncType(f) => assert!(matches!(*f.param_type, FinalType::Polymorphic(_))),
+        _ => panic!("Expected FuncType"),
+    }
+}
+
+#[test]
+fn test_fn_unused_param_is_polymorphic() {
+    let t = run("fn x => 1");
+    match t {
+        FinalType::FuncType(f) => assert!(matches!(*f.param_type, FinalType::Polymorphic(_))),
+        _ => panic!("Expected FuncType"),
+    }
+}
+
 // ── function application ──────────────────────────────────────────────────────
 
 #[test]
@@ -639,6 +278,22 @@ fn test_partial_application_returns_func() {
         }
         _ => panic!("Expected FuncType from partial application"),
     }
+}
+
+#[test]
+fn test_polymorphic_identity_applied_to_bool() {
+    assert!(is_bool(&run("(fn x => x) true")));
+}
+
+#[test]
+fn test_polymorphic_identity_applied_to_func() {
+    assert!(is_func(&run("(fn x => x) (fn y => y)")));
+}
+
+#[test]
+fn test_letrec_self_reference_in_value() {
+    // f references itself — this is what letrec is for
+    assert!(is_int(&run("letrec f = fn n => if n < 1 then 0 else f (n - 1) in f 5")));
 }
 
 // ── if expressions ────────────────────────────────────────────────────────────

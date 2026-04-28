@@ -289,6 +289,22 @@ fn test_parse_parenthesized_expr() {
     assert!(matches!(expr, Expr::CompExpr(_)));
 }
 
+#[test]
+fn test_parse_parenthesized_expr_with_addition() {
+    // (5)
+    let tokens = vec![
+        Token::LParen,
+        Token::IntegerLiteral(5),
+        Token::AdditiveOps(AdditiveOps::Add),
+        Token::IntegerLiteral(3),
+        Token::RParen,
+        Token::AdditiveOps(AdditiveOps::Add),
+        Token::IntegerLiteral(1),
+    ];
+    let expr = parse(tokens);
+    assert!(matches!(expr, Expr::CompExpr(_)));
+}
+
 // ── error cases ───────────────────────────────────────────────────────────────
 
 #[test]

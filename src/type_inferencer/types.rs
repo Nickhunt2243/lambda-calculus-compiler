@@ -53,7 +53,8 @@ impl TypeVariableGenerate {
 pub enum FinalType {
     BoolType,
     IntType,
-    FuncType(Box<FinalFuncType>)
+    FuncType(Box<FinalFuncType>),
+    Polymorphic(String)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -67,8 +68,9 @@ pub struct TypeInference {
     pub left: Box<Type>,
     pub right: Box<Type>
 }
-impl TypeInference {
-    pub fn unpack(self) -> (Box<Type>, Box<Type>) {
-        (self.left, self.right)
-    }
-}
+
+// #[derive(Debug, Clone, PartialEq)]
+// pub struct TypeScheme {
+//     pub quantified_vars: Vec<TypeVariable>,  // the ∀ variables
+//     pub ty: Box<Type>,                        // the body type
+// }

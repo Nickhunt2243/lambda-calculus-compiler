@@ -26,6 +26,13 @@ fn test_keyword_letrec() {
 }
 
 #[test]
+fn test_keyword_let_rec() {
+    let tokens = lex("let rec");
+    assert!(matches!(tokens[0], Token::Keyword(Keyword::Let)));
+    assert!(matches!(&tokens[1], Token::Identifier(s) if s == "rec"));
+}
+
+#[test]
 fn test_keyword_fn() {
     let tokens = lex("fn");
     assert!(matches!(tokens[0], Token::Keyword(Keyword::Fn)));
@@ -136,6 +143,24 @@ fn test_negative_integer_after_operator() {
 fn test_subtraction_vs_negative() {
     // '5 - 3' should produce Sub, not a negative literal
     let tokens = lex("5 - 3");
+    assert!(matches!(tokens[0], Token::IntegerLiteral(5)));
+    assert!(matches!(tokens[1], Token::AdditiveOps(AdditiveOps::Sub)));
+    assert!(matches!(tokens[2], Token::IntegerLiteral(3)));
+}
+
+#[test]
+fn test_adjacent_addition() {
+    // '5 - 3' should produce Sub, not a negative literal
+    let tokens = lex("5+3");
+    assert!(matches!(tokens[0], Token::IntegerLiteral(5)));
+    assert!(matches!(tokens[1], Token::AdditiveOps(AdditiveOps::Add)));
+    assert!(matches!(tokens[2], Token::IntegerLiteral(3)));
+}
+
+#[test]
+fn test_adjacent_subtraction() {
+    // '5 - 3' should produce Sub, not a negative literal
+    let tokens = lex("5-3");
     assert!(matches!(tokens[0], Token::IntegerLiteral(5)));
     assert!(matches!(tokens[1], Token::AdditiveOps(AdditiveOps::Sub)));
     assert!(matches!(tokens[2], Token::IntegerLiteral(3)));

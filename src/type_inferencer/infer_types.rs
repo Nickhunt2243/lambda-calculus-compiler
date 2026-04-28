@@ -239,7 +239,7 @@ fn infer_app_expr_type(
                     Type::TypeVariable(right_type_var) => occurs_in(&right_type_var, &*func_type.param_type)?,
                     _ => {}
                 }
-                inferred_types.push(TypeInference {left: left_hand_atom_type.clone(), right: right_hand_atom_type.clone()});
+                inferred_types.push(TypeInference {left: func_type.param_type.clone(), right: right_hand_atom_type.clone()});
                 left_hand_atom_type = func_type.return_type.clone();
             },
             Type::TypeVariable(type_var) => {

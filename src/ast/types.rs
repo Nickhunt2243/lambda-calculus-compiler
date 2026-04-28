@@ -346,7 +346,11 @@ impl Atom {
             Some(Token::BooleanLiteral(boolean_literal)) => Ok((Atom::BooleanLiteral(boolean_literal.clone()), idx + 1)),
             Some(Token::LParen) => {
                 let (expr, next_idx) = Expr::new(tokens, idx + 1)?;
-                Ok((Atom::PrioritizedExpr(Box::new(expr)), next_idx))
+                match tokens.get(next_idx) {
+                    Some(Token::RParen) => Ok((Atom::PrioritizedExpr(Box::new(expr)), next_idx + 1)),
+                    Some(other) => Err(format!("Expected ), received: {:?}", other)),
+                    None => Err("Unexpected end of input, expected )".to_string()),
+                }
             },
             Some(other) => return Err(format!("Failed to build atom, received: {:?}", other)),
             None => Err("Unexpected end of input, expected =.".to_string()),
@@ -365,7 +369,7 @@ pub enum Expr {
 
 impl Expr {
     pub fn new(tokens: &[Token], idx: usize) -> Result<(Expr, usize), String> {
-        let token = tokens.get(idx).expect("Failed to ");
+        let token = tokens.get(idx).expect("Unexpected end of token stream.");
         match token {
             Token::Keyword(Keyword::Fn) => {
                 let (func_decl_expr, next_idx) = FunctionDeclExpr::new(tokens, idx)?;
