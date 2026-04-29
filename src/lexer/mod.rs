@@ -40,7 +40,7 @@ impl<'a> Lexer<'a> {
         let matches = &self.char_stream[self.curr_idx..end_idx] == keyword.as_bytes();
 
         // at end of stream or followed by whitespace
-        if end_idx == char_length || is_white_space(self.char_stream[end_idx]) {
+        if end_idx == char_length || !self.char_stream[end_idx].is_ascii_alphanumeric() {
             if matches {
                 self.append_token(token, end_idx);
             }

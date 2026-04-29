@@ -78,11 +78,11 @@ fn unify_inferred_types(
         (Type::IntType, Type::TypeVariable(right_type_var))
         | (Type::BoolType, Type::TypeVariable(right_type_var))
         | (Type::FuncType(_), Type::TypeVariable(right_type_var))
-        | (Type::TypeVariable(_), Type::TypeVariable(right_type_var))
         => substitute_inferred_type(right_type_var, left, inferred_types, substitutions),
         (Type::TypeVariable(left_type_var), Type::IntType)
         | (Type::TypeVariable(left_type_var), Type::BoolType)
         | (Type::TypeVariable(left_type_var), Type::FuncType(_))
+        | (Type::TypeVariable(left_type_var), Type::TypeVariable(_))
         => substitute_inferred_type(left_type_var, right, inferred_types, substitutions),
         (Type::FuncType(left_func_type), Type::FuncType(right_fund_type))
         => {

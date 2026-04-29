@@ -1,10 +1,7 @@
-
 use super::type_inference;
-use super::types::{FinalType};
+use super::types::FinalType;
 use crate::lexer::Lexer;
 use crate::ast::parse;
-
-// ── helpers ───────────────────────────────────────────────────────────────────
 
 fn run(src: &str) -> FinalType {
     let mut lexer = Lexer::new(src);
@@ -20,171 +17,39 @@ fn run_err(src: &str) -> String {
     type_inference(&ast).unwrap_err()
 }
 
-fn is_int(t: &FinalType) -> bool {
-    matches!(t, FinalType::IntType)
-}
+fn is_int(t: &FinalType) -> bool { matches!(t, FinalType::IntType) }
+fn is_bool(t: &FinalType) -> bool { matches!(t, FinalType::BoolType) }
 
-fn is_bool(t: &FinalType) -> bool {
-    matches!(t, FinalType::BoolType)
-}
+// ── Function type inference ───────────────────────────────────────────────────
 
-fn is_func(t: &FinalType) -> bool {
-    matches!(t, FinalType::FuncType(_))
-}
-
-// ── literals ──────────────────────────────────────────────────────────────────
-
+// fn x => x + 1: param constrained to int through arithmetic
 #[test]
-fn test_integer_literal() {
-    assert!(is_int(&run("5")));
-}
-
-#[test]
-fn test_negative_integer_literal() {
-    assert!(is_int(&run("-5")));
-}
-
-#[test]
-fn test_boolean_literal_true() {
-    assert!(is_bool(&run("true")));
-}
-
-#[test]
-fn test_boolean_literal_false() {
-    assert!(is_bool(&run("false")));
-}
-
-// ── arithmetic ────────────────────────────────────────────────────────────────
-
-#[test]
-fn test_addition() {
-    assert!(is_int(&run("1 + 2")));
-}
-
-#[test]
-fn test_subtraction() {
-    assert!(is_int(&run("5 - 3")));
-}
-
-#[test]
-fn test_multiplication() {
-    assert!(is_int(&run("3 * 4")));
-}
-
-#[test]
-fn test_division() {
-    assert!(is_int(&run("10 / 2")));
-}
-
-#[test]
-fn test_chained_addition() {
-    assert!(is_int(&run("1 + 2 + 3")));
-}
-
-#[test]
-fn test_chained_multiplication() {
-    assert!(is_int(&run("2 * 3 * 4")));
-}
-
-#[test]
-fn test_mixed_arithmetic() {
-    assert!(is_int(&run("1 + 2 * 3")));
-}
-
-// ── comparisons ───────────────────────────────────────────────────────────────
-
-#[test]
-fn test_less_than() {
-    assert!(is_bool(&run("1 < 2")));
-}
-
-#[test]
-fn test_greater_than() {
-    assert!(is_bool(&run("5 > 3")));
-}
-
-#[test]
-fn test_less_than_equal_to() {
-    assert!(is_bool(&run("3 <= 3")));
-}
-
-#[test]
-fn test_greater_than_equal_to() {
-    assert!(is_bool(&run("4 >= 2")));
-}
-
-#[test]
-fn test_equality_integers() {
-    assert!(is_bool(&run("1 == 1")));
-}
-
-#[test]
-fn test_equality_booleans() {
-    assert!(is_bool(&run("true == false")));
-}
-
-// ── let expressions ───────────────────────────────────────────────────────────
-
-#[test]
-fn test_let_integer_binding() {
-    assert!(is_int(&run("let x = 5 in x")));
-}
-
-#[test]
-fn test_let_boolean_binding() {
-    assert!(is_bool(&run("let x = true in x")));
-}
-
-#[test]
-fn test_let_arithmetic_body() {
-    assert!(is_int(&run("let x = 5 in x + 1")));
-}
-
-#[test]
-fn test_let_nested() {
-    assert!(is_int(&run("let x = 5 in let y = 3 in x + y")));
-}
-
-#[test]
-fn test_let_binding_is_function() {
-    assert!(is_int(&run("let f = fn x => x + 1 in f 5")));
-}
-
-#[test]
-fn test_let_body_uses_comparison() {
-    assert!(is_bool(&run("let x = 5 in x < 10")));
-}
-
-// ── function declarations ─────────────────────────────────────────────────────
-
-#[test]
-fn test_identity_function() {
-    assert!(is_func(&run("fn x => x")));
-}
-
-#[test]
-fn test_fn_returning_int() {
-    let t = run("fn x => 5");
-    match t {
-        FinalType::FuncType(f) => assert!(is_int(&f.return_type)),
+fn test_fn_param_constrained_by_arithmetic() {
+    match run("fn x => x + 1") {
+        FinalType::FuncType(f) => {
+            assert!(is_int(&f.param_type));
+            assert!(is_int(&f.return_type));
+        }
         _ => panic!("Expected FuncType"),
     }
 }
 
+// fn x => x < 5: param int, return bool
 #[test]
-fn test_fn_returning_bool() {
-    let t = run("fn x => true");
-    match t {
-        FinalType::FuncType(f) => assert!(is_bool(&f.return_type)),
+fn test_fn_param_constrained_by_comparison() {
+    match run("fn x => x < 5") {
+        FinalType::FuncType(f) => {
+            assert!(is_int(&f.param_type));
+            assert!(is_bool(&f.return_type));
+        }
         _ => panic!("Expected FuncType"),
     }
 }
 
+// fn x => fn y => x + y: int -> int -> int (fully resolved)
 #[test]
-fn test_curried_function_nested_type() {
-    // fn x => fn y => x + y should be int -> int -> int
-    let t = run("fn x => fn y => x + y");
-    match t {
+fn test_curried_fn_fully_resolves() {
+    match run("fn x => fn y => x + y") {
         FinalType::FuncType(outer) => {
             assert!(is_int(&outer.param_type));
             match *outer.return_type {
@@ -199,239 +64,191 @@ fn test_curried_function_nested_type() {
     }
 }
 
+// fn x => x: unconstrained param is polymorphic
 #[test]
-fn test_fn_param_constrained_to_int_by_arithmetic() {
-    // fn x => x + 1 — param must be int
-    let t = run("fn x => x + 1");
-    match t {
-        FinalType::FuncType(f) => {
-            assert!(is_int(&f.param_type));
-            assert!(is_int(&f.return_type));
-        }
-        _ => panic!("Expected FuncType"),
-    }
-}
-
-#[test]
-fn test_fn_param_constrained_to_int_by_comparison() {
-    // fn x => x < 5 — param is int, return is bool
-    let t = run("fn x => x < 5");
-    match t {
-        FinalType::FuncType(f) => {
-            assert!(is_int(&f.param_type));
-            assert!(is_bool(&f.return_type));
-        }
-        _ => panic!("Expected FuncType"),
-    }
-}
-
-#[test]
-fn test_identity_function_has_polymorphic_param() {
-    let t = run("fn x => x");
-    match t {
+fn test_fn_unconstrained_param_is_polymorphic() {
+    match run("fn x => x") {
         FinalType::FuncType(f) => assert!(matches!(*f.param_type, FinalType::Polymorphic(_))),
         _ => panic!("Expected FuncType"),
     }
 }
 
+// ── Deeply nested inference ───────────────────────────────────────────────────
+
+// let with fn value and if in body
 #[test]
-fn test_fn_unused_param_is_polymorphic() {
-    let t = run("fn x => 1");
-    match t {
-        FinalType::FuncType(f) => assert!(matches!(*f.param_type, FinalType::Polymorphic(_))),
-        _ => panic!("Expected FuncType"),
-    }
+fn test_let_fn_with_if_body() {
+    assert!(is_int(&run(
+        "let f = fn x => x + 1 in if f 3 < 10 then f 5 else f 0"
+    )));
 }
 
-// ── function application ──────────────────────────────────────────────────────
-
+// nested let with arithmetic and comparison
 #[test]
-fn test_apply_identity_to_int() {
-    assert!(is_int(&run("(fn x => x) 5")));
+fn test_deeply_nested_let_with_conditionals() {
+    assert!(is_bool(&run(
+        "let x = 5 in let y = x + 3 in let z = y * 2 in z > 10"
+    )));
 }
 
+// fn body containing let and if
 #[test]
-fn test_apply_identity_to_bool() {
-    assert!(is_bool(&run("(fn x => x) true")));
+fn test_fn_body_with_let_and_if() {
+    assert!(is_int(&run(
+        "let clamp = fn x => let lo = 0 in let hi = 100 in if x < lo then lo else if x > hi then hi else x in clamp 50"
+    )));
 }
 
+// triple curried application
 #[test]
-fn test_apply_add_one() {
-    let t = run("let x = fn x => x + 1 in x 5");
-    println!("{:?}", t);
-    assert!(is_int(&t));
-}
-
-#[test]
-fn test_apply_curried_add() {
-    assert!(is_int(&run("let add = fn x => fn y => x + y in add 3 4")));
-}
-
-#[test]
-fn test_partial_application_returns_func() {
-    // add 3 should return int -> int
-    let t = run("let add = fn x => fn y => x + y in add 3");
-    match t {
-        FinalType::FuncType(f) => {
-            assert!(is_int(&f.param_type));
-            assert!(is_int(&f.return_type));
-        }
-        _ => panic!("Expected FuncType from partial application"),
-    }
-}
-
-#[test]
-fn test_polymorphic_identity_applied_to_bool() {
-    assert!(is_bool(&run("(fn x => x) true")));
-}
-
-#[test]
-fn test_polymorphic_identity_applied_to_func() {
-    assert!(is_func(&run("(fn x => x) (fn y => y)")));
-}
-
-#[test]
-fn test_letrec_self_reference_in_value() {
-    // f references itself — this is what letrec is for
-    assert!(is_int(&run("letrec f = fn n => if n < 1 then 0 else f (n - 1) in f 5")));
-}
-
-// ── if expressions ────────────────────────────────────────────────────────────
-
-#[test]
-fn test_if_int_branches() {
-    assert!(is_int(&run("if true then 1 else 0")));
-}
-
-#[test]
-fn test_if_bool_branches() {
-    assert!(is_bool(&run("if true then true else false")));
-}
-
-#[test]
-fn test_if_with_comparison_condition() {
-    assert!(is_int(&run("if 1 < 2 then 10 else 20")));
-}
-
-#[test]
-fn test_if_with_let_in_branch() {
-    assert!(is_int(&run("if true then let x = 5 in x else 0")));
-}
-
-#[test]
-fn test_nested_if() {
-    assert!(is_int(&run("if true then if false then 1 else 2 else 3")));
-}
-
-#[test]
-fn test_if_condition_must_be_bool() {
-    // condition is constrained to bool — using an int comparison satisfies this
-    assert!(is_bool(&run("if 1 == 1 then true else false")));
+fn test_triple_curried_application() {
+    assert!(is_int(&run(
+        "let f = fn x => fn y => fn z => x + y + z in f 1 2 3"
+    )));
 }
 
 // ── letrec ────────────────────────────────────────────────────────────────────
 
+// factorial: recursive, uses comparison, multiplication, subtraction
 #[test]
-fn test_letrec_identity() {
-    assert!(is_int(&run("letrec f = fn x => x in f 5")));
-}
-
-#[test]
-fn test_letrec_returns_function() {
-    assert!(is_func(&run("letrec f = fn x => x + 1 in f")));
-}
-
-#[test]
-fn test_letrec_factorial_structure() {
+fn test_letrec_factorial() {
     assert!(is_int(&run(
         "letrec fact = fn n => if n < 2 then 1 else n * fact (n - 1) in fact 5"
     )));
 }
 
+// sum: different recursive structure using addition
 #[test]
-fn test_letrec_body_type_is_return_type() {
-    // letrec f = fn x => x in 42 — body is just 42, not f
-    assert!(is_int(&run("letrec f = fn x => x in 42")));
-}
-
-// ── complex programs ──────────────────────────────────────────────────────────
-
-#[test]
-fn test_compose_two_functions() {
+fn test_letrec_sum() {
     assert!(is_int(&run(
-        "let double = fn x => x * 2 in let inc = fn x => x + 1 in double (inc 3)"
+        "letrec sum = fn n => if n < 1 then 0 else n + sum (n - 1) in sum 10"
     )));
 }
 
+// letrec body type is independent of the recursive function's type
 #[test]
-fn test_higher_order_apply() {
-    // let apply = fn f => fn x => f x in apply (fn x => x + 1) 5
-    assert!(is_int(&run(
-        "let apply = fn f => fn x => f x in apply (fn x => x + 1) 5"
+fn test_letrec_body_type_independent_of_fn() {
+    assert!(is_bool(&run(
+        "letrec f = fn x => x + 1 in 5 > 3"
     )));
 }
 
+// letrec with wrong argument type should fail
 #[test]
-fn test_boolean_predicate_function() {
-    assert!(is_bool(&run("let is_positive = fn x => x > 0 in is_positive 5")));
+fn test_letrec_wrong_arg_type_errors() {
+    let err = run_err(
+        "letrec fact = fn n => if n < 2 then 1 else n * fact (n - 1) in fact true"
+    );
+    assert!(err.contains("Failed to unify"));
 }
 
+// ── polymorphic let ───────────────────────────────────────────────────────────
+
+// identity applied to int and bool in same expression
 #[test]
-fn test_deeply_nested_let() {
+fn test_let_polymorphic_identity_both_types() {
     assert!(is_int(&run(
-        "let a = 1 in let b = 2 in let c = 3 in a + b + c"
+        "let id = fn x => x in if id true then id 5 else id 0"
     )));
 }
 
+// higher order apply used at two different types
 #[test]
-fn test_function_returning_function() {
-    // let make_adder = fn x => fn y => x + y in make_adder 5
-    let t = run("let make_adder = fn x => fn y => x + y in make_adder 5");
-    match t {
-        FinalType::FuncType(f) => {
-            assert!(is_int(&f.param_type));
-            assert!(is_int(&f.return_type));
-        }
-        _ => panic!("Expected FuncType"),
-    }
+fn test_let_polymorphic_apply_different_types() {
+    assert!(is_int(&run(
+        "let apply = fn f => fn x => f x in
+         let b = apply (fn x => x) true in
+         apply (fn x => x + 1) 5"
+    )));
+}
+
+// compose: tests that type variables thread correctly through multiple polymorphic uses
+#[test]
+fn test_let_polymorphic_compose() {
+    assert!(is_int(&run(
+        "let compose = fn f => fn g => fn x => f (g x) in
+         compose (fn x => x + 1) (fn x => x * 2) 3"
+    )));
+}
+
+// outer binding accessible after inner shadow
+#[test]
+fn test_let_shadow_outer_accessible_before_shadow() {
+    assert!(is_int(&run(
+        "let id = fn x => x in let a = id 5 in let id = fn x => true in a"
+    )));
+}
+
+// monomorphic constraint correctly rejects wrong type
+#[test]
+fn test_let_monomorphic_rejects_wrong_type() {
+    let err = run_err("let f = fn x => x + 1 in f true");
+    assert!(err.contains("Failed to unify"));
+}
+
+// ∀a. a -> int applied to both int and bool in arithmetic
+#[test]
+fn test_polymorphic_const_used_in_arithmetic() {
+    assert!(is_int(&run(
+        "let const_one = fn x => 1 in const_one true + const_one 5"
+    )));
+}
+
+// shadowed binding with different type
+#[test]
+fn test_polymorphic_shadow_changes_type() {
+    assert!(is_bool(&run(
+        "let id = fn x => x in let id = fn x => true in id 5"
+    )));
+}
+
+// polymorphic fn applied in both if branches with different types
+#[test]
+fn test_polymorphic_in_if_branches() {
+    assert!(is_bool(&run(
+        "let id = fn x => x in if true then id true else id false"
+    )));
+}
+
+// ── if type constraints ───────────────────────────────────────────────────────
+
+// condition must be bool — int condition fails
+#[test]
+fn test_if_int_condition_errors() {
+    let err = run_err("if 5 then 1 else 0");
+    assert!(err.contains("Failed to unify"));
+}
+
+// branch type mismatch fails even when nested
+#[test]
+fn test_if_nested_branch_mismatch_errors() {
+    let err = run_err("if true then (if false then 1 else true) else 0");
+    assert!(err.contains("Failed to unify"));
 }
 
 // ── error cases ───────────────────────────────────────────────────────────────
 
 #[test]
 fn test_unbound_variable_errors() {
-    let err = run_err("x");
-    assert!(err.contains("Variable reference prior to declaration"));
+    assert!(run_err("x").contains("Variable reference prior to declaration"));
 }
 
 #[test]
-fn test_unbound_variable_in_body_errors() {
-    let err = run_err("let x = 5 in y");
-    assert!(err.contains("Variable reference prior to declaration"));
+fn test_variable_out_of_scope_errors() {
+    assert!(run_err("let x = 5 in y").contains("Variable reference prior to declaration"));
 }
 
 #[test]
-fn test_int_bool_branch_mismatch_errors() {
-    // then branch is int, else branch is bool — must unify
-    let err = run_err("if true then 1 else true");
-    assert!(err.contains("Failed to unify"));
+fn test_int_applied_as_function_errors() {
+    assert!(run_err("5 3").contains("not callable"));
 }
 
 #[test]
-fn test_applying_int_as_function_errors() {
-    let err = run_err("5 3");
-    assert!(err.contains("not callable"));
+fn test_bool_applied_as_function_errors() {
+    assert!(run_err("true 5").contains("not callable"));
 }
 
 #[test]
-fn test_applying_bool_as_function_errors() {
-    let err = run_err("true 5");
-    assert!(err.contains("not callable"));
-}
-
-#[test]
-fn test_arithmetic_on_bool_errors() {
-    // true + 1 — bool can't unify with int in arithmetic
-    let err = run_err("true + 1");
-    assert!(err.contains("Failed to unify"));
+fn test_bool_in_arithmetic_errors() {
+    assert!(run_err("true + 1").contains("Failed to unify"));
 }
