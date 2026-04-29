@@ -69,8 +69,17 @@ pub struct TypeInference {
     pub right: Box<Type>
 }
 
-// #[derive(Debug, Clone, PartialEq)]
-// pub struct TypeScheme {
-//     pub quantified_vars: Vec<TypeVariable>,  // the ∀ variables
-//     pub ty: Box<Type>,                        // the body type
-// }
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypeScheme {
+    pub quantified_vars: Vec<TypeVariable>,  // the ∀ variables
+    pub body_type: Box<Type>,                        // the body type
+}
+
+impl TypeScheme {
+    pub fn from_type_var(type_var: TypeVariable) -> Self {
+        Self {
+            quantified_vars: Vec::default(),
+            body_type: Box::new(Type::TypeVariable(type_var))
+        }
+    }
+}

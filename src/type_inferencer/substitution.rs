@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use crate::type_inferencer::types::{FinalType, Type, TypeVariable, FinalFuncType};
 
+
 pub fn apply_substitutions(return_type: Type, substitutions: HashMap<TypeVariable, Type>) -> Result<FinalType, String> {
     match return_type {
         Type::IntType => Ok(FinalType::IntType),

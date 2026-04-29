@@ -2,18 +2,18 @@ extern crate core;
 
 pub mod lexer;
 pub mod ast;
-mod helpers;
 mod type_inferencer;
 
 
 use lexer::{Lexer};
 use ast::{parse};
+use type_inferencer::{type_inference};
 
 fn main() {
-    let mut lexer = Lexer::new("let x = 5 in x");
+    let mut lexer = Lexer::new("let x = fn y => y + 3 in x");
     let tokens = lexer.tokenize().unwrap();
+    let ast = parse(tokens).unwrap();
 
-    let ast = parse(tokens);
-
-    println!("{:?}", ast);
+    let return_type = type_inference(&ast);
+    println!("Result: {:?}", return_type);
 }
